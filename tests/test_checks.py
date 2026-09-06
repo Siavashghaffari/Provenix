@@ -266,9 +266,14 @@ def test_both_engines_share_one_check_implementation() -> None:
     declaration, which is the point of the applicability mechanism rather than
     an exception to it.
     """
+    # PVX012 applies to both engines but its *criteria* differ by design:
+    # git state is the engine-agnostic primary signal, and `manifest.version`
+    # is an additional Nextflow-only one (MVP.md section 4). In a repository
+    # with commits, Nextflow can therefore fire where Snakemake does not.
+    engine_specific_criteria = {"PVX012"}
     cross_engine = {
         spec.id for spec in registry() if spec.engines >= {Engine.NEXTFLOW, Engine.SNAKEMAKE}
-    }
+    } - engine_specific_criteria
     nextflow_ids = {f.id for f in analyse(BAD)} & cross_engine
     snakemake_ids = {f.id for f in analyse(SM_BAD)} & cross_engine
     assert nextflow_ids == snakemake_ids

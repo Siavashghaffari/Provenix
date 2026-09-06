@@ -26,13 +26,10 @@ NF_GOOD = FIXTURES / "nextflow_good"
 NF_BAD = FIXTURES / "nextflow_bad"
 SM_BAD = FIXTURES / "snakemake_bad"
 
-#: The fake credentials planted in the bad fixtures. None of these may appear
-#: in any output format (design.md section 8).
-FAKE_SECRETS = (
-    "AKIAIOSFODNN7EXAMPLE",
-    "hunter2-not-a-real-password",
-    "AIzaSyD-1234567890abcdefghijklmnopqrstu",
-)
+#: Assembled at run time by conftest.py, never committed as literals — a
+#: secret scanner cannot tell a fake vendor-shaped key from a live one, and
+#: committing one produces a real alert on a value that was never real.
+from conftest import planted_secrets
 
 
 def _finding(severity: Severity) -> Finding:
@@ -177,15 +174,24 @@ def test_html_shows_skipped_checks() -> None:
 # --------------------------------------------------------------------------
 
 
-@pytest.mark.parametrize("root", [NF_BAD, SM_BAD])
-def test_no_secret_value_appears_in_any_output(root: Path) -> None:
-    """The guarantee in design.md section 8, asserted across every format."""
+@pytest.mark.parametrize("which", ["nextflow", "snakemake"])
+def test_no_secret_value_appears_in_any_output(pipeline_with_secrets, which: str) -> None:
+    """The guarantee in design.md section 8, asserted across every format.
+
+    Runs against a copy of the bad fixture with vendor-shaped credentials
+    planted into it — an AWS key ID, a Google API key, a GitHub token and a
+    private key header — so the high-confidence shapes are exercised without
+    any of them existing as a literal in the repository.
+    """
+    from provenix.report import terminal
+
+    root = pipeline_with_secrets(which)
     workflow = engine.parse(root, engine.detect(root))
     outcomes = run_all(workflow)
     findings = findings_from(outcomes)
-    assert any(f.id == "PVX030" for f in findings), "fixture should contain a fake secret"
 
-    from provenix.report import terminal
+    secret_findings = [f for f in findings if f.id == "PVX030"]
+    assert len(secret_findings) >= 4, "every planted vendor shape should be detected"
 
     rendered = []
     for renderer in (terminal.render, json_out.render, html.render):
@@ -194,8 +200,46 @@ def test_no_secret_value_appears_in_any_output(root: Path) -> None:
         rendered.append(buffer.getvalue())
 
     for output in rendered:
-        for secret in FAKE_SECRETS:
-            assert secret not in output
+        for secret in planted_secrets():
+            assert secret not in output, f"{secret[:8]}... leaked into output"
+
+
+def test_committed_fixtures_contain_no_vendor_shaped_secret() -> None:
+    """Guards the fix for a real GitHub secret-scanning alert.
+
+    A synthetic Google API key in a test fixture was flagged on push. It was
+    never a live credential, but a scanner cannot know that, so the rule is
+    that no committed file carries a value matching a provider pattern.
+    """
+    import re
+
+    patterns = re.compile(
+        r"AIza[0-9A-Za-z_-]{35}"
+        r"|gh[pousr]_[A-Za-z0-9]{36,}"
+        r"|xox[abprs]-[A-Za-z0-9-]{10,}"
+        r"|[sr]k_live_[A-Za-z0-9]{20,}"
+        r"|AKIA[0-9A-Z]{16}"
+    )
+    repo = Path(__file__).resolve().parents[1]
+    # secrets.py defines these patterns; it is the one file allowed to.
+    allowed = {repo / "src" / "provenix" / "checks" / "secrets.py"}
+
+    offenders = []
+    for path in sorted(repo.rglob("*")):
+        if not path.is_file() or path in allowed:
+            continue
+        if any(part in {".git", "dist", "__pycache__", ".ruff_cache"} for part in path.parts):
+            continue
+        if path.suffix not in {".py", ".yml", ".yaml", ".config", ".nf", ".smk", ".md", ".toml"}:
+            continue
+        try:
+            text = path.read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            continue
+        if patterns.search(text):
+            offenders.append(str(path.relative_to(repo)))
+
+    assert not offenders, f"vendor-shaped credential literals committed: {offenders}"
 
 
 def test_secret_reference_is_not_flagged() -> None:
