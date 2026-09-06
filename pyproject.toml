@@ -1,0 +1,97 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "provenix"
+version = "0.1.0"
+description = "Static reproducibility and audit analysis for bioinformatics workflows"
+readme = "README.md"
+license = { file = "LICENSE" }
+requires-python = ">=3.10"
+keywords = [
+    "bioinformatics",
+    "nextflow",
+    "snakemake",
+    "reproducibility",
+    "workflow",
+    "static-analysis",
+    "provenance",
+    "audit",
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Console",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Scientific/Engineering :: Bio-Informatics",
+    "Topic :: Software Development :: Quality Assurance",
+    "Typing :: Typed",
+]
+
+# No runtime dependencies, deliberately. Provenix is pointed at untrusted
+# repositories, so the smallest possible supply chain is a feature. It also
+# starts no subprocesses at all — see README, "Limits".
+dependencies = []
+
+[project.optional-dependencies]
+dev = ["pytest>=7", "ruff>=0.6"]
+
+[project.urls]
+Homepage = "https://github.com/provenix/provenix"
+Issues = "https://github.com/provenix/provenix/issues"
+
+[project.scripts]
+provenix = "provenix.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/provenix"]
+
+# The tool map and the HTML template are read at runtime and must ship inside
+# the wheel. Without this the installed package raises on `list-checks` and
+# renders an empty HTML report — which is exactly what the clean-install
+# check in CI is there to catch.
+[tool.hatch.build.targets.wheel.force-include]
+"src/provenix/data/stochastic_tools.yml" = "provenix/data/stochastic_tools.yml"
+"src/provenix/report/template.html" = "provenix/report/template.html"
+"src/provenix/py.typed" = "provenix/py.typed"
+
+[tool.hatch.build.targets.sdist]
+include = ["src/provenix", "tests", "README.md", "LICENSE", "pyproject.toml"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = [
+    "E",    # pycodestyle
+    "F",    # pyflakes
+    "I",    # isort
+    "UP",   # pyupgrade
+    "B",    # flake8-bugbear
+    "SIM",  # flake8-simplify
+    "RUF",
+]
+ignore = [
+    "E501",    # line length is enforced by the formatter, not the linter
+    "B008",
+    "RUF012",
+]
+
+[tool.ruff.lint.per-file-ignores]
+# Checks are registered by a decorator whose keyword is `id`, matching the
+# public check identifier. Renaming it to appease the shadow-builtin rule
+# would make the registry read worse than the spec it implements.
+"src/provenix/checks/__init__.py" = ["A002"]
+"tests/*" = ["E402"]

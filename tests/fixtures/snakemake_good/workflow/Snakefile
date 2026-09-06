@@ -1,0 +1,14 @@
+# A clean Snakemake workflow. Provenix must report zero findings.
+# Documentation links in comments must never be read as reference data:
+#   https://snakemake.readthedocs.io/en/latest/snakefiles/rules.html
+#   https://github.com/snakemake/snakemake/blob/main/README.md
+
+configfile: "config/config.yaml"
+
+# A commented-out container directive must be ignored entirely:
+# container: "docker://continuumio/miniconda3"
+
+container: "docker://quay.io/biocontainers/seq2science:0.7.2--pypyhdfd78af_0"
+
+include: "rules/common.smk"
+include: "rules/align.smk"

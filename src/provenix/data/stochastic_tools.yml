@@ -1,0 +1,79 @@
+# Tools whose output depends on a random number generator, and the flag that
+# fixes it. PVX010 fires when the tool is invoked and none of its seed flags
+# appear in the command or in the resolved process arguments.
+#
+# This list is short on purpose. The bar for inclusion is evidence, not
+# recollection, because a wrong entry here fires on every pipeline that uses
+# the tool correctly.
+#
+# Two admissible kinds of evidence:
+#
+#   1. The nf-core community sets a seed for this tool in the production path
+#      of a real pipeline. That is their judgement that the tool needs one,
+#      and it is recorded per entry below with the file it came from.
+#   2. The tool's whole purpose is random subsampling, where running without
+#      a fixed seed is non-reproducible by definition.
+#
+# Tools deliberately NOT listed, having failed that bar during Phase 3:
+# bowtie2, fasttree, mafft, vsearch, iqtree, raxml. Each accepts a seed flag,
+# but each also has a fixed default seed, so absence of the flag does not by
+# itself mean the run is irreproducible. nf-core sets `--seed 1` for bowtie2
+# only in `conf/test.config`, to stabilise CI — not in the production path.
+# Flagging them would have produced 9 false positives across the corpus.
+#
+# `invoked_as` is a regex requiring the tool at a command position, so that a
+# container name like `quay.io/biocontainers/metabat2:2.15` cannot trigger it.
+# The leading class allows a quote, because a Snakemake `shell:` command is
+# itself a quoted string: "seqtk sample {input} ...".
+#
+# Parsed by parsers/tools.py, which reads this exact schema and is not a
+# general YAML parser.
+
+tools:
+  - name: preseq
+    invoked_as: '(?:^|[^\w.-])preseq\s+(?:lc_extrap|c_curve|gc_extrap|bound_pop)'
+    flags: ['-seed', '--seed']
+    why: Subsampling for the complexity curve is randomised.
+    evidence: nf-core/rnaseq conf/modules/preseq.config sets '-seed 1'.
+
+  - name: umi_tools
+    invoked_as: '(?:^|[^\w.-])umi_tools\s+(?:dedup|group|count)'
+    flags: ['--random-seed']
+    why: Ties between UMIs are broken at random.
+    evidence: nf-core/rnaseq umitools/dedup/main.nf injects --random-seed if absent.
+
+  - name: adapterremoval
+    invoked_as: '(?:^|[^\w.-])AdapterRemoval\s'
+    flags: ['--seed']
+    why: Ambiguous base resolution is randomised.
+    evidence: nf-core/mag adapterremoval/main.nf hardcodes '--seed 42'.
+
+  - name: metabat2
+    invoked_as: '(?:^|[^\w.-])metabat2\s+-'
+    flags: ['--seed']
+    why: Binning starts from randomised k-medoid seeds; the default draws from the clock.
+    evidence: nf-core/mag conf/modules.config sets '--seed ${params.metabat_rng_seed}'.
+
+  - name: semibin
+    invoked_as: '(?:^|[^\w.-])SemiBin2?\s+\w'
+    flags: ['--random-seed']
+    why: Neural-network training is seeded from the clock by default.
+    evidence: nf-core/mag conf/modules.config sets '--random-seed ${params.semibin_rng_seed}'.
+
+  - name: seqtk_sample
+    invoked_as: '(?:^|[^\w.-])seqtk\s+sample'
+    flags: ['-s']
+    why: Read subsampling draws at random.
+    evidence: Subsampling without a fixed seed is non-reproducible by definition.
+
+  - name: seqkit_sample
+    invoked_as: '(?:^|[^\w.-])seqkit\s+sample'
+    flags: ['-s', '--rand-seed']
+    why: Read subsampling draws at random.
+    evidence: Subsampling without a fixed seed is non-reproducible by definition.
+
+  - name: picard_downsample
+    invoked_as: 'DownsampleSam'
+    flags: ['RANDOM_SEED', '--RANDOM_SEED', '-RANDOM_SEED']
+    why: Read downsampling draws at random.
+    evidence: Subsampling without a fixed seed is non-reproducible by definition.

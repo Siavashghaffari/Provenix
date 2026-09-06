@@ -1,0 +1,2 @@
+# CI fixtures on a branch. Excluded by design, reported as INFO.
+testdata: "https://raw.githubusercontent.com/snakemake-workflows/test-datasets/refs/heads/main/reads.fq.gz"

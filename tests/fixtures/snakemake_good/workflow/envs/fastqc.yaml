@@ -1,0 +1,10 @@
+channels:
+  - conda-forge
+  - bioconda
+dependencies:
+  - bioconda::fastqc=0.12.1
+  - r-base =4.0
+  - curl ==7.71
+  - pip
+  - pip:
+      - git+https://github.com/example/tool.git@v0.1.2

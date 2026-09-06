@@ -1,0 +1,6 @@
+configfile: "config/config.yaml"
+
+# PVX001: no tag at all, so Docker resolves :latest.
+container: "docker://continuumio/miniconda3"
+
+include: "rules/calling.smk"

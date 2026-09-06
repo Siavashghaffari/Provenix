@@ -1,0 +1,5 @@
+# Workflow-wide defaults. The Snakemake analogue of nf-core's conf/base.config.
+retries: 3
+default-resources:
+  mem_mb: 8000
+  runtime: 240

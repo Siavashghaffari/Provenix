@@ -1,0 +1,85 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install ruff
+      - name: ruff check
+        run: ruff check src tests
+      - name: ruff format --check
+        run: ruff format --check src tests
+
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.10", "3.11", "3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - run: pip install -e ".[dev]"
+      - run: pytest -q
+
+  # The packaging regression guard. The tool map and the HTML template are
+  # read at runtime; if they ever drop out of the wheel, the source tree keeps
+  # working and only an installed copy breaks. This job installs the built
+  # wheel into an environment with no source on the path and exercises the
+  # paths that need those files.
+  clean-install:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install build
+      - run: python -m build --wheel --outdir dist
+
+      - name: Install the wheel somewhere with no source tree
+        run: |
+          mkdir -p /tmp/isolated
+          python -m venv /tmp/isolated/venv
+          /tmp/isolated/venv/bin/pip install --quiet dist/*.whl
+
+      - name: No third-party dependencies were pulled in
+        run: |
+          extra=$(/tmp/isolated/venv/bin/pip list --format=freeze \
+            | grep -vE '^(provenix|pip|setuptools|wheel)=' || true)
+          if [ -n "$extra" ]; then echo "unexpected dependencies:"; echo "$extra"; exit 1; fi
+
+      - name: The CLI runs, and the packaged data files are readable
+        working-directory: /tmp/isolated
+        run: |
+          set -eu
+          V=/tmp/isolated/venv/bin/provenix
+          # Reads data/stochastic_tools.yml.
+          test "$($V list-checks | grep -c '^PVX')" -eq 13
+          # A minimal pipeline, built here so the check has real input.
+          mkdir -p pipe/modules
+          printf "manifest { version = '1.0.0' }\n" > pipe/nextflow.config
+          printf "process P {\n    container 'biocontainers/bwa:latest'\n\n    script:\n    \"\"\"\n    bwa mem\n    \"\"\"\n}\n" > pipe/modules/main.nf
+          $V check pipe --format json > out.json
+          python -c "import json;d=json.load(open('out.json'));assert any(f['id']=='PVX001' for f in d['findings']),d"
+          # Reads report/template.html.
+          $V check pipe --format html --output out.html || true
+          grep -q '<style>' out.html
+          # Exit code contract.
+          $V check pipe --fail-on none > /dev/null
+          if $V check pipe --fail-on critical > /dev/null; then echo "expected exit 1"; exit 1; fi

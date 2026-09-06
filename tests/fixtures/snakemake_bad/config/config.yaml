@@ -1,0 +1,3 @@
+# PVX004: a branch ref. PVX005: no checksum anywhere in this file.
+reference: "https://raw.githubusercontent.com/example/refs/master/genome.fa"
+annotation: "https://ref.example.org/gtf/latest/genes.gtf"

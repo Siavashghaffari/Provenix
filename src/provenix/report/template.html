@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Provenix report — __PIPELINE__</title>
+<style>
+  /* Everything inline. No CDN, no webfont, no script that fetches anything:
+     this file has to open from a filesystem in five years and may be attached
+     to a regulatory submission (design.md section 9). */
+  :root {
+    --ink: #1a1a1a; --muted: #666; --rule: #ddd; --bg: #fff; --panel: #f7f7f7;
+    --critical: #b3261e; --high: #b26a00; --medium: #1f6feb; --security: #6d28d9;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 2rem 1.25rem; background: var(--bg); color: var(--ink);
+    font: 15px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  main { max-width: 60rem; margin: 0 auto; }
+  h1 { font-size: 1.4rem; margin: 0 0 .2rem; }
+  .sub { color: var(--muted); font-size: .9rem; margin: 0 0 1.5rem; }
+  .summary { display: flex; flex-wrap: wrap; gap: 1.5rem; align-items: center;
+             background: var(--panel); border: 1px solid var(--rule);
+             border-radius: 6px; padding: 1rem 1.25rem; margin-bottom: 1.5rem; }
+  .score { font-size: 2.4rem; font-weight: 600; line-height: 1; }
+  .score small { font-size: .9rem; font-weight: 400; color: var(--muted); }
+  .counts { display: flex; flex-wrap: wrap; gap: 1rem; font-size: .9rem; }
+  .counts b { font-weight: 600; }
+  h2 { font-size: 1rem; text-transform: uppercase; letter-spacing: .05em;
+       margin: 2rem 0 .6rem; padding-bottom: .3rem; border-bottom: 2px solid var(--rule); }
+  h2.critical { color: var(--critical); border-color: var(--critical); }
+  h2.high     { color: var(--high);     border-color: var(--high); }
+  h2.medium   { color: var(--medium);   border-color: var(--medium); }
+  h2.security { color: var(--security); border-color: var(--security); }
+  table { width: 100%; border-collapse: collapse; font-size: .9rem; }
+  th, td { text-align: left; vertical-align: top; padding: .55rem .6rem;
+           border-bottom: 1px solid var(--rule); }
+  th { font-size: .75rem; text-transform: uppercase; letter-spacing: .04em;
+       color: var(--muted); font-weight: 600; }
+  td.id { font-weight: 600; white-space: nowrap; }
+  td.loc { white-space: nowrap; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+           font-size: .82rem; }
+  .evidence { display: block; margin-top: .35rem; color: var(--muted);
+              font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+              font-size: .78rem; word-break: break-all; }
+  .fix { display: block; margin-top: .35rem; }
+  .fix b { font-weight: 600; }
+  .wrap { overflow-x: auto; }
+  .note { background: var(--panel); border: 1px solid var(--rule); border-radius: 6px;
+          padding: .8rem 1rem; margin: 1.5rem 0; font-size: .88rem; color: var(--muted); }
+  .note b { color: var(--ink); }
+  ul.plain { margin: .4rem 0 0; padding-left: 1.1rem; }
+  footer { margin-top: 2.5rem; padding-top: 1rem; border-top: 1px solid var(--rule);
+           color: var(--muted); font-size: .8rem; }
+  .clean { padding: 1.5rem; text-align: center; color: var(--muted);
+           background: var(--panel); border-radius: 6px; }
+</style>
+</head>
+<body>
+<main>
+__BODY__
+</main>
+</body>
+</html>
