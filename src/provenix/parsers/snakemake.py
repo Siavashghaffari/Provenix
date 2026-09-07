@@ -36,6 +36,7 @@ from ..model import (
     SourceInfo,
     Workflow,
 )
+from ..paths import has_part, is_skipped, relative_posix
 from . import conda_env, images, refdata
 from ._scan import Line, merge_adjacent_literals, scan_python, string_literals
 
@@ -125,8 +126,7 @@ def _apply_profile_defaults(root: Path, workflow: Workflow) -> None:
     for path in _walk(root):
         if path.suffix not in (".yaml", ".yml"):
             continue
-        parts = [p.lower() for p in path.parts]
-        if "profiles" not in parts and "profile" not in parts:
+        if not has_part(path, root, {"profiles", "profile"}):
             continue
         try:
             text = path.read_text(encoding="utf-8", errors="replace")
@@ -155,7 +155,7 @@ def _walk(root: Path) -> list[Path]:
     return [
         path
         for path in sorted(root.rglob("*"), key=lambda p: p.as_posix())
-        if path.is_file() and not any(part in SKIP_DIRS for part in path.parts)
+        if path.is_file() and not is_skipped(path, root, SKIP_DIRS)
     ]
 
 
@@ -173,22 +173,17 @@ def _config_files(root: Path) -> list[Path]:
     for path in _walk(root):
         if path.suffix not in (".yaml", ".yml"):
             continue
-        parts = [p.lower() for p in path.parts]
-        if "envs" in parts or "env" in parts:
+        if has_part(path, root, {"envs", "env"}):
             continue
         if path.name.startswith("environment."):
             continue
-        if "config" in parts or path.name.startswith("config"):
+        if has_part(path, root, {"config"}) or path.name.startswith("config"):
             found.append(path)
     return found
 
 
 def _is_test_path(path: Path, root: Path) -> bool:
-    try:
-        relative = path.relative_to(root).as_posix()
-    except ValueError:
-        relative = path.as_posix()
-    return bool(_TEST_PATH.search(relative))
+    return bool(_TEST_PATH.search(relative_posix(path, root)))
 
 
 # --------------------------------------------------------------------------

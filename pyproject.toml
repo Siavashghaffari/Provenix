@@ -7,7 +7,8 @@ name = "provenix"
 version = "0.1.0"
 description = "Static reproducibility and audit analysis for bioinformatics workflows"
 readme = "README.md"
-license = { file = "LICENSE" }
+license = "MIT"
+license-files = ["LICENSE"]
 requires-python = ">=3.10"
 keywords = [
     "bioinformatics",
@@ -23,7 +24,6 @@ classifiers = [
     "Development Status :: 3 - Alpha",
     "Environment :: Console",
     "Intended Audience :: Science/Research",
-    "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
@@ -43,8 +43,9 @@ dependencies = []
 dev = ["pytest>=7", "ruff>=0.6"]
 
 [project.urls]
-Homepage = "https://github.com/provenix/provenix"
-Issues = "https://github.com/provenix/provenix/issues"
+Homepage = "https://github.com/Siavashghaffari/Provenix"
+Issues = "https://github.com/Siavashghaffari/Provenix/issues"
+Source = "https://github.com/Siavashghaffari/Provenix"
 
 [project.scripts]
 provenix = "provenix.cli:main"

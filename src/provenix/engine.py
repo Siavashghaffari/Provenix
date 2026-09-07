@@ -6,6 +6,7 @@ from pathlib import Path
 
 from .model import Engine, Workflow
 from .parsers import nextflow, snakemake
+from .paths import is_skipped
 
 
 class DetectionError(Exception):
@@ -54,7 +55,7 @@ def _find(root: Path, patterns: tuple[str, ...], names: tuple[str, ...]) -> list
             found.append(name)
     for pattern in patterns:
         for path in sorted(root.rglob(pattern)):
-            if any(part in _SKIP for part in path.parts):
+            if is_skipped(path, root, _SKIP):
                 continue
             if path.is_file():
                 found.append(path.relative_to(root).as_posix())

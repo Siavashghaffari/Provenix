@@ -33,6 +33,7 @@ from ..model import (
     SourceInfo,
     Workflow,
 )
+from ..paths import is_skipped, relative_posix
 from . import conda_env, images, nfconfig, refdata
 from ._scan import Line, balanced_quotes, scan_groovy, string_literals
 
@@ -118,7 +119,7 @@ def _walk(root: Path, suffixes: tuple[str, ...]) -> list[Path]:
     for path in sorted(root.rglob("*")):
         if not path.is_file():
             continue
-        if any(part in SKIP_DIRS for part in path.parts):
+        if is_skipped(path, root, SKIP_DIRS):
             continue
         if path.suffix in suffixes:
             found.append(path)
@@ -506,11 +507,7 @@ def _manifest_version(lines: list[Line]) -> str | None:
 
 
 def _is_test_path(path: Path, root: Path) -> bool:
-    try:
-        relative = path.relative_to(root).as_posix()
-    except ValueError:
-        relative = path.as_posix()
-    return bool(_TEST_CONFIG.search(relative))
+    return bool(_TEST_CONFIG.search(relative_posix(path, root)))
 
 
 def _note_checksum_state(path: Path, lines: list[Line], workflow: Workflow) -> None:

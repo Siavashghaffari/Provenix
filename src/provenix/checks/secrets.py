@@ -21,6 +21,7 @@ from pathlib import Path
 
 from ..finding import Finding, Severity
 from ..model import Workflow
+from ..paths import is_skipped
 from . import check
 
 #: Interpolation and lookup forms. A value containing any of these names a
@@ -72,7 +73,7 @@ def _scannable(root: Path) -> list[Path]:
     for path in sorted(root.rglob("*"), key=lambda p: p.as_posix()):
         if not path.is_file():
             continue
-        if any(part in _SKIP_DIRS for part in path.parts):
+        if is_skipped(path, root, _SKIP_DIRS):
             continue
         if path.suffix in _SCANNED_SUFFIXES or path.name in ("Snakefile", "nextflow.config"):
             found.append(path)

@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import io
 import re
+import shutil
 from pathlib import Path
 
 import pytest
@@ -299,3 +300,96 @@ def test_provenance_signals() -> None:
 
     workflow.source = SourceInfo(is_repo=True, commit="a" * 40, declared_version="1.2.0")
     assert unrecorded_source_version(workflow) == []
+
+
+# --------------------------------------------------------------------------
+# Location independence
+# --------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("engine_name", ["nextflow", "snakemake"])
+@pytest.mark.parametrize("ancestor", ["work", ".venv", "node_modules", ".github", "config", "env"])
+def test_findings_do_not_depend_on_ancestor_directory_names(
+    tmp_path: Path, engine_name: str, ancestor: str
+) -> None:
+    """A pipeline must analyse identically wherever it happens to live.
+
+    The directory skip lists and the config/env/profile classifiers were
+    matched against `Path.parts` of an *absolute* path, which includes every
+    ancestor above the pipeline root. A checkout under a directory named
+    `work` — which is precisely where GitHub Actions puts one,
+    `/home/runner/work/<repo>/<repo>` — matched the Nextflow skip set, so
+    every file was skipped, the parse returned an empty Workflow, and the tool
+    reported a clean pipeline having read nothing at all.
+
+    Reporting "clean" because no files were seen is the worst failure this
+    tool can have, so the guarantee is asserted directly: same pipeline, same
+    findings, regardless of the names of the directories above it.
+    """
+    source = FIXTURES / f"{engine_name}_bad"
+    expected = {(f.id, f.line) for f in analyse(source, disabled=_GIT_DEPENDENT)}
+    assert expected, "the bad fixture must produce findings from its committed location"
+
+    relocated = tmp_path / ancestor / "pipeline"
+    relocated.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copytree(source, relocated)
+
+    actual = {(f.id, f.line) for f in analyse(relocated, disabled=_GIT_DEPENDENT)}
+    assert actual == expected, (
+        f"findings changed when the pipeline lived under {ancestor!r}: "
+        f"missing={sorted(expected - actual)} unexpected={sorted(actual - expected)}"
+    )
+
+
+@pytest.mark.parametrize(
+    "engine_name,marker,expected",
+    [
+        ("nextflow", "modules/main.nf", Engine.NEXTFLOW),
+        ("snakemake", "rules/a.smk", Engine.SNAKEMAKE),
+    ],
+)
+def test_engine_detection_does_not_depend_on_ancestor_directory_names(
+    tmp_path: Path, engine_name: str, marker: str, expected: Engine
+) -> None:
+    """Detection must find a pipeline that has no top-level marker file.
+
+    `engine.detect` looks for `nextflow.config` / `Snakefile` by name first and
+    only then globs for `*.nf` / `*.smk`. A pipeline with just the globbed
+    files, sitting under a directory named `work`, was undetectable: the glob
+    results were all discarded by the skip list before `is_file()` ran.
+    """
+    root = tmp_path / "work" / "pipeline"
+    target = root / marker
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_text(
+        "// placeholder\n" if engine_name == "nextflow" else "rule a:\n", encoding="utf-8"
+    )
+
+    assert engine.detect(root) is expected
+
+
+def test_profile_detection_does_not_depend_on_ancestor_directory_names(tmp_path: Path) -> None:
+    """A config YAML must not become a Snakemake profile by ancestry.
+
+    `_apply_profile_defaults` treats a YAML as a workflow profile when a
+    `profiles/` directory is on its path. Matched against the absolute path, a
+    pipeline living under any directory called `profiles` had every one of its
+    YAMLs read as a profile — so a stray `retries:` key silently suppressed
+    PVX021 for the whole workflow.
+    """
+    root = tmp_path / "profiles" / "pipeline"
+    (root / "workflow").mkdir(parents=True)
+    (root / "config").mkdir(parents=True)
+    (root / "workflow" / "Snakefile").write_text(
+        'rule a:\n    output:\n        "out.txt",\n    shell:\n        "touch {output}"\n',
+        encoding="utf-8",
+    )
+    # Not a profile: it is the pipeline's own config, and it happens to carry a
+    # key that only means something inside a profile.
+    (root / "config" / "config.yaml").write_text("retries: 5\n", encoding="utf-8")
+
+    findings = analyse(root, disabled=_GIT_DEPENDENT)
+    assert any(f.id == "PVX021" for f in findings), (
+        "config/config.yaml was mistaken for a workflow profile, so its `retries:` "
+        "suppressed PVX021"
+    )

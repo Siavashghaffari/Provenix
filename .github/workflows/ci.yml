@@ -69,17 +69,40 @@ jobs:
         run: |
           set -eu
           V=/tmp/isolated/venv/bin/provenix
+
+          # `provenix check` exits 1 when a finding is at or above --fail-on.
+          # That is the CI gate contract, not an error, so every invocation
+          # below declares the exit code it expects. Ignoring the code with
+          # `|| true` would also swallow a genuine crash (exit 2).
+          expect() {
+            want="$1"; shift
+            got=0
+            "$@" || got=$?
+            if [ "$got" -ne "$want" ]; then
+              echo "::error::expected exit $want but got $got from: $*"
+              exit 1
+            fi
+          }
+
           # Reads data/stochastic_tools.yml.
+          expect 0 $V list-checks
           test "$($V list-checks | grep -c '^PVX')" -eq 13
-          # A minimal pipeline, built here so the check has real input.
+
+          # A minimal pipeline, built here so the check has real input. Its
+          # container is `:latest`, so PVX001 fires and the default
+          # `--fail-on critical` makes every check below exit 1.
           mkdir -p pipe/modules
           printf "manifest { version = '1.0.0' }\n" > pipe/nextflow.config
           printf "process P {\n    container 'biocontainers/bwa:latest'\n\n    script:\n    \"\"\"\n    bwa mem\n    \"\"\"\n}\n" > pipe/modules/main.nf
-          $V check pipe --format json > out.json
+
+          expect 1 $V check pipe --format json --output out.json
           python -c "import json;d=json.load(open('out.json'));assert any(f['id']=='PVX001' for f in d['findings']),d"
+
           # Reads report/template.html.
-          $V check pipe --format html --output out.html || true
+          expect 1 $V check pipe --format html --output out.html
           grep -q '<style>' out.html
-          # Exit code contract.
-          $V check pipe --fail-on none > /dev/null
-          if $V check pipe --fail-on critical > /dev/null; then echo "expected exit 1"; exit 1; fi
+
+          # The exit-code contract itself.
+          expect 0 $V check pipe --fail-on none
+          expect 1 $V check pipe --fail-on critical
+          expect 2 $V check /nonexistent-pipeline
