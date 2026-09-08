@@ -1,5 +1,9 @@
 # Provenix
 
+[![PyPI](https://img.shields.io/pypi/v/provenix)](https://pypi.org/project/provenix/)
+[![Python](https://img.shields.io/pypi/pyversions/provenix)](https://pypi.org/project/provenix/)
+[![License](https://img.shields.io/pypi/l/provenix)](https://github.com/Siavashghaffari/Provenix/blob/main/LICENSE)
+
 Static reproducibility and audit analysis for bioinformatics workflows.
 
 Provenix reads pipeline source and answers one question:
@@ -11,6 +15,7 @@ It works on **Nextflow** and **Snakemake**. It never executes the pipeline,
 needs no cloud credentials, and needs no historical run data.
 
 ```bash
+pip install provenix
 provenix check ./my-pipeline
 ```
 
