@@ -38,7 +38,7 @@ Produced by running `provenix check` on **nf-core/viralrecon** at commit
 `fa23078`, unedited:
 
 ```
-provenix  nf_viralrecon  [nextflow]
+provenix  viralrecon  [nextflow]
 70 processes, 70 environments, 13 checks run
 
 HIGH  (4)

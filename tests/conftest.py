@@ -46,10 +46,19 @@ def _private_key_header() -> str:
     return "-----BEGIN " + "RSA PRIVATE KEY" + "-----"
 
 
-#: Every value planted by `pipeline_with_secrets`, plus the literal committed
-#: in the bad fixtures. None of these may appear in any output format
-#: (design.md section 8).
+@pytest.fixture
 def planted_secrets() -> tuple[str, ...]:
+    """Every value `pipeline_with_secrets` plants, plus the committed literal.
+
+    None of these may appear in any output format (design.md section 8).
+
+    Assembled at run time and never committed as literals: a secret scanner
+    cannot tell a fake vendor-shaped key from a live one, so committing one
+    produces a real alert on a value that was never real. A fixture rather
+    than a module-level function, so consumers receive it by injection — a
+    bare `from conftest import ...` only resolves under pytest's default
+    `prepend` import mode and breaks under `--import-mode=importlib`.
+    """
     return (
         _google_api_key(),
         _aws_access_key_id(),

@@ -26,11 +26,6 @@ NF_GOOD = FIXTURES / "nextflow_good"
 NF_BAD = FIXTURES / "nextflow_bad"
 SM_BAD = FIXTURES / "snakemake_bad"
 
-#: Assembled at run time by conftest.py, never committed as literals — a
-#: secret scanner cannot tell a fake vendor-shaped key from a live one, and
-#: committing one produces a real alert on a value that was never real.
-from conftest import planted_secrets
-
 
 def _finding(severity: Severity) -> Finding:
     return Finding(
@@ -86,7 +81,13 @@ def test_not_applicable_checks_never_deduct() -> None:
 
 
 def test_clean_fixtures_score_full_marks() -> None:
-    """PVX012 aside: this repository has no commits, so git state is absent."""
+    """A clean pipeline scores 100.
+
+    PVX012 is excluded because the fixtures live inside this repository rather
+    than in one of their own, so they inherit whatever git state the checkout
+    has. Its result would describe the clone, not the fixture. PVX012 is
+    covered directly in test_provenance_signals.
+    """
     for root in (NF_GOOD, FIXTURES / "snakemake_good"):
         workflow = engine.parse(root, engine.detect(root))
         outcomes = run_all(workflow, disabled=["PVX012"])
@@ -175,7 +176,9 @@ def test_html_shows_skipped_checks() -> None:
 
 
 @pytest.mark.parametrize("which", ["nextflow", "snakemake"])
-def test_no_secret_value_appears_in_any_output(pipeline_with_secrets, which: str) -> None:
+def test_no_secret_value_appears_in_any_output(
+    pipeline_with_secrets, planted_secrets: tuple[str, ...], which: str
+) -> None:
     """The guarantee in design.md section 8, asserted across every format.
 
     Runs against a copy of the bad fixture with vendor-shaped credentials
@@ -200,7 +203,7 @@ def test_no_secret_value_appears_in_any_output(pipeline_with_secrets, which: str
         rendered.append(buffer.getvalue())
 
     for output in rendered:
-        for secret in planted_secrets():
+        for secret in planted_secrets:
             assert secret not in output, f"{secret[:8]}... leaked into output"
 
 

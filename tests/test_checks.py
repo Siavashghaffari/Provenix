@@ -27,10 +27,13 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 
 
 #: PVX012 asks whether the pipeline is under version control with a resolvable
-#: HEAD. The fixtures live inside this repository, so they inherit its git
-#: state — and it has no commits, by instruction. The check is therefore
-#: disabled when asserting a fixture is clean, and covered directly in
-#: test_provenance_signals below instead.
+#: HEAD. The fixtures live inside this repository rather than in one of their
+#: own, so they inherit whatever git state the checkout happens to have: its
+#: commits, its tags, whether HEAD resolves at all. PVX012's result therefore
+#: says something about the checkout, not about the fixture, and asserting on
+#: it here would make these tests depend on how the repository was cloned.
+#: It is disabled in fixture assertions and covered directly, against explicit
+#: SourceInfo values, in test_provenance_signals below.
 _GIT_DEPENDENT = ["PVX012"]
 
 
